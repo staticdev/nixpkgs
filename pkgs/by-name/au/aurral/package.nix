@@ -1,6 +1,7 @@
 {
   lib,
   buildNpmPackage,
+  cloudflared,
   fetchFromGitHub,
   gitMinimal,
   nix-update-script,
@@ -38,18 +39,15 @@ buildNpmPackage (finalAttrs: {
     ./package.json.patch
   ];
 
-  # patch needed for upstream test issues and pinned Beets version that is being deprecated see https://github.com/lklynet/aurral/pull/937
-  # TODO: remove recovery test patch after merging https://github.com/lklynet/aurral/pull/951
+  # TODO: Remove once upstream fixes the non-portable test shebang:
+  # https://github.com/lklynet/aurral/issues/1329
   postPatch = ''
-    substituteInPlace backend/services/trackMatching/beetsClient.js \
-      --replace-fail 'const PINNED_BEETS_VERSION = "2.14.0";' \
-      'const PINNED_BEETS_VERSION = "${python3.pkgs.beets.version}";'
-    substituteInPlace .tests/track-matching/beets-client.test.js \
-      --replace-fail 'assert.equal(status.error.required, "2.14.0");' \
-      'assert.equal(status.error.required, "${python3.pkgs.beets.version}");'
-    substituteInPlace .tests/honker/background-worker-recovery.test.js \
-      --replace-fail '  assert.equal(registry?.inFlightActive, undefined);' \
-      '  assert.equal(registry?.inFlightActive, undefined); queue.cancel(jobId);'
+    substituteInPlace .tests/share/share-links.test.js \
+      --replace-fail '#!/usr/bin/env node' \
+      '#!${lib.getExe nodejs_26}'
+    substituteInPlace .tests/download/ytdlp-song-search.test.js \
+      --replace-fail '#!/usr/bin/env node' \
+      '#!${lib.getExe nodejs_26}'
   '';
 
   npmDepsFetcherVersion = 2;
@@ -109,6 +107,7 @@ buildNpmPackage (finalAttrs: {
     export PATH=${
       lib.makeBinPath [
         finalAttrs.nodejs
+        cloudflared
         ffmpeg
         yt-dlp
       ]
